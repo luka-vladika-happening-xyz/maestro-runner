@@ -1239,7 +1239,7 @@ func (d *Driver) resolveRelativeSelector(sel flow.Selector, allElements []*Parse
 	// Apply relative filters
 	anchorSelector, filterType := getRelativeFilter(sel)
 	if anchorSelector != nil {
-		anchors := FilterBySelector(allElements, *anchorSelector)
+		anchors := PickAnchor(FilterBySelector(allElements, *anchorSelector), anchorSelector.Index)
 		if len(anchors) == 0 {
 			return nil, notFound("anchor element not found")
 		}

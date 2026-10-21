@@ -788,6 +788,22 @@ func isClickableType(elemType string) bool {
 	}
 }
 
+// PickAnchor narrows a relative selector's anchors to the one the anchor's own
+// index names (`childOf: {id: card, index: 1}`), chosen the way a plain
+// selector's index is: clickable first, then that position. Without an index
+// every anchor is kept and the first one with matches wins; with an index out
+// of range there is no anchor. The index used to be dropped, so `childOf` the
+// second card searched the first one.
+func PickAnchor(anchors []*ParsedElement, index string) []*ParsedElement {
+	if index == "" || len(anchors) == 0 {
+		return anchors
+	}
+	if core.IndexError(len(anchors), index) != nil {
+		return nil
+	}
+	return []*ParsedElement{SelectByIndex(SortClickableFirst(anchors), index)}
+}
+
 // SortClickableFirst reorders elements to prioritize interactive ones.
 // iOS doesn't expose a "clickable" attribute, so we determine clickability
 // from the element type (Button, Link, TextField, etc. are clickable).

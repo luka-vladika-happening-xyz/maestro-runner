@@ -846,7 +846,7 @@ func (d *Driver) resolveRelativeSelector(sel flow.Selector) (*core.ElementInfo, 
 			}
 		} else {
 			// Simple anchor - use FilterBySelector
-			anchors = FilterBySelector(allElements, *anchorSelector)
+			anchors = PickAnchor(FilterBySelector(allElements, *anchorSelector), anchorSelector.Index)
 		}
 	}
 
@@ -945,7 +945,7 @@ func (d *Driver) findElementRelativeWithElements(sel flow.Selector, allElements 
 			}
 		} else {
 			// Simple anchor - use FilterBySelector
-			anchors = FilterBySelector(allElements, *anchorSelector)
+			anchors = PickAnchor(FilterBySelector(allElements, *anchorSelector), anchorSelector.Index)
 		}
 	}
 
