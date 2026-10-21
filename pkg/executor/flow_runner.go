@@ -37,6 +37,12 @@ type FlowRunner struct {
 	// Set when a runFlow's or runScript's when: skipped it; markInteraction
 	// consumes it
 	conditionSkipped bool
+
+	// retryNotLast counts the retry: blocks running an attempt they will
+	// repeat on failure, debugBusy is set while the debugger runs a step:
+	// neither pauses on a failure (debugger.go).
+	retryNotLast int
+	debugBusy    bool
 	// Sub-command tracking for compound steps (runFlow, repeat, retry)
 	subCommands []report.Command
 	// nestedArtifactSeq numbers failure artifacts captured for nested steps
@@ -667,6 +673,7 @@ func (fr *FlowRunner) executeStep(idx int, step flow.Step) (report.Status, strin
 		result = fr.runStep(idx, step, &artifacts)
 	}
 	result = fr.maskTypedResult(step, result)
+	result = fr.maybePause(step, result)
 
 	stepDuration := time.Since(stepStart).Milliseconds()
 
@@ -1277,6 +1284,9 @@ func (fr *FlowRunner) executeRetry(step *flow.RetryStep) *core.CommandResult {
 		}
 
 		success := true
+		if attempt < attempts {
+			fr.retryNotLast++
+		}
 		for _, nestedStep := range step.Steps {
 			result := fr.executeNestedStep(nestedStep)
 			if !result.Success && !optionalFailure(nestedStep, result) {
@@ -1284,6 +1294,9 @@ func (fr *FlowRunner) executeRetry(step *flow.RetryStep) *core.CommandResult {
 				success = false
 				break
 			}
+		}
+		if attempt < attempts {
+			fr.retryNotLast--
 		}
 
 		if success {
@@ -1763,6 +1776,7 @@ func (fr *FlowRunner) executeNestedStep(step flow.Step) *core.CommandResult {
 		result = fr.runNestedStep(step)
 	}
 	result = fr.maskTypedResult(step, result)
+	result = fr.maybePause(step, result)
 
 	duration := time.Since(start).Milliseconds()
 
@@ -1930,7 +1944,13 @@ func (fr *FlowRunner) executeSubFlowWithRetry(subFlow flow.Flow, attempts int) *
 			}
 		}
 
+		if attempt < attempts {
+			fr.retryNotLast++
+		}
 		result := fr.executeSubFlow(subFlow)
+		if attempt < attempts {
+			fr.retryNotLast--
+		}
 		if result.Success {
 			return &core.CommandResult{
 				Success: true,
