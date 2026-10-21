@@ -38,6 +38,12 @@ type FlowRunner struct {
 	// Set when a runFlow's or runScript's when: skipped it: the step is
 	// reported skipped, and markInteraction consumes it
 	conditionSkipped bool
+
+	// retryNotLast counts the retry: blocks running an attempt they will
+	// repeat on failure, debugBusy is set while the debugger runs a step:
+	// neither pauses on a failure (debugger.go).
+	retryNotLast int
+	debugBusy    bool
 	// Sub-command tracking for compound steps (runFlow, repeat, retry)
 	subCommands []report.Command
 	// live is the top-level compound step that runs now, whose steps go to
@@ -696,6 +702,7 @@ func (fr *FlowRunner) executeStep(idx int, step flow.Step) (report.Status, strin
 		fr.live = nil
 	}
 	result = fr.maskTypedResult(step, result)
+	result = fr.maybePause(step, result)
 
 	stepDuration := time.Since(stepStart).Milliseconds()
 
@@ -1319,6 +1326,9 @@ func (fr *FlowRunner) executeRetry(step *flow.RetryStep) *core.CommandResult {
 		}
 
 		success := true
+		if attempt < attempts {
+			fr.retryNotLast++
+		}
 		for _, nestedStep := range step.Steps {
 			result := fr.executeNestedStep(nestedStep)
 			if !result.Success && !optionalFailure(nestedStep, result) {
@@ -1326,6 +1336,9 @@ func (fr *FlowRunner) executeRetry(step *flow.RetryStep) *core.CommandResult {
 				success = false
 				break
 			}
+		}
+		if attempt < attempts {
+			fr.retryNotLast--
 		}
 
 		if success {
@@ -1818,6 +1831,7 @@ func (fr *FlowRunner) executeNestedStep(step flow.Step) *core.CommandResult {
 		result = fr.runNestedStep(step)
 	}
 	result = fr.maskTypedResult(step, result)
+	result = fr.maybePause(step, result)
 
 	duration := time.Since(start).Milliseconds()
 
@@ -1962,7 +1976,7 @@ func (l *liveSteps) end(compound bool) {
 // runFlow's steps can be followed while it runs and not only once it ended.
 func (fr *FlowRunner) liveSubs() {
 	l := fr.live
-	if l == nil || fr.flowWriter == nil {
+	if l == nil || fr.flowWriter == nil || fr.debugBusy {
 		return
 	}
 	list := slices.Clone(fr.subCommands)
@@ -2054,7 +2068,13 @@ func (fr *FlowRunner) executeSubFlowWithRetry(subFlow flow.Flow, attempts int) *
 			}
 		}
 
+		if attempt < attempts {
+			fr.retryNotLast++
+		}
 		result := fr.executeSubFlow(subFlow)
+		if attempt < attempts {
+			fr.retryNotLast--
+		}
 		if result.Success {
 			return &core.CommandResult{
 				Success: true,
