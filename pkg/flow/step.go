@@ -3,6 +3,7 @@ package flow
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -399,8 +400,15 @@ type InputTextStep struct {
 }
 
 // Retypes reports whether a field that reads back short is typed again: true
-// unless the step says `retype: false`.
-func (s *InputTextStep) Retypes() bool { return s.Retype == nil || *s.Retype }
+// unless the step says `retype: false`. Fork only (simector): with
+// MAESTRO_RUNNER_NO_RETYPE=1 a step without `retype:` types once, as Maestro
+// does, since the suites simector runs are written for Maestro.
+func (s *InputTextStep) Retypes() bool {
+	if s.Retype == nil {
+		return os.Getenv("MAESTRO_RUNNER_NO_RETYPE") != "1"
+	}
+	return *s.Retype
+}
 
 // UnmarshalYAML decodes InputTextStep and drops the `text:` value that the
 // inlined Selector picked up alongside Text. See the type comment.
