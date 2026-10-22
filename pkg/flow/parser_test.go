@@ -2679,3 +2679,17 @@ func TestParse_InputTextRetype(t *testing.T) {
 		t.Error("no retype: Retypes() = false, want true")
 	}
 }
+
+// Fork only (simector): MAESTRO_RUNNER_NO_RETYPE=1 makes `retype: false` the
+// default; a step's own `retype:` still wins.
+func TestRetypeDefaultFromEnvironment(t *testing.T) {
+	t.Setenv("MAESTRO_RUNNER_NO_RETYPE", "1")
+	yes := true
+	if (&InputTextStep{}).Retypes() || !(&InputTextStep{Retype: &yes}).Retypes() {
+		t.Error("with MAESTRO_RUNNER_NO_RETYPE=1: want no retype by default and retype: true to win")
+	}
+	t.Setenv("MAESTRO_RUNNER_NO_RETYPE", "0")
+	if !(&InputTextStep{}).Retypes() {
+		t.Error("MAESTRO_RUNNER_NO_RETYPE=0 turned retyping off")
+	}
+}
