@@ -41,7 +41,7 @@ func TestNewClient(t *testing.T) {
 
 // TestCreateSession tests session creation
 func TestCreateSession(t *testing.T) {
-	var sawSnapshotDepth bool
+	var sawSnapshotDepth, sawElementFields bool
 	clearShortcut := map[string]interface{}{}
 	server := mockWDAServer(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -63,6 +63,11 @@ func TestCreateSession(t *testing.T) {
 			// ...and says how a field is cleared.
 			if v, ok := body.Settings["useClearTextShortcut"]; ok {
 				clearShortcut["sent"] = v
+			}
+			// ...and asks finds for the fields getElementInfo reads (#258).
+			if body.Settings["shouldUseCompactResponses"] == false &&
+				body.Settings["elementResponseAttributes"] == "name,text,rect,displayed" {
+				sawElementFields = true
 			}
 			jsonResponse(w, map[string]interface{}{"value": map[string]interface{}{}})
 		default:
@@ -86,6 +91,9 @@ func TestCreateSession(t *testing.T) {
 	}
 	if !sawSnapshotDepth {
 		t.Error("CreateSession should raise snapshotMaxDepth so deep RN trees are not clipped")
+	}
+	if !sawElementFields {
+		t.Error("CreateSession should ask WDA for the element fields in each find's answer")
 	}
 	// A real iPhone (the client's default) keeps WDA's hardware-key clear: typed
 	// backspaces erase only what is left of the cursor.
