@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/devicelab-dev/maestro-runner/pkg/core"
 )
 
 // mockWDAServer creates a mock WDA server for testing
@@ -40,6 +42,7 @@ func TestNewClient(t *testing.T) {
 // TestCreateSession tests session creation
 func TestCreateSession(t *testing.T) {
 	var sawSnapshotDepth, sawElementFields bool
+	clearShortcut := map[string]interface{}{}
 	server := mockWDAServer(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == "POST" && r.URL.Path == "/session":
@@ -61,6 +64,10 @@ func TestCreateSession(t *testing.T) {
 			if body.Settings["shouldUseCompactResponses"] == false &&
 				body.Settings["elementResponseAttributes"] == "name,text,rect,displayed" {
 				sawElementFields = true
+			}
+			// ...and says how a field is cleared.
+			if v, ok := body.Settings["useClearTextShortcut"]; ok {
+				clearShortcut["sent"] = v
 			}
 			jsonResponse(w, map[string]interface{}{"value": map[string]interface{}{}})
 		default:
@@ -87,6 +94,22 @@ func TestCreateSession(t *testing.T) {
 	}
 	if !sawElementFields {
 		t.Error("CreateSession should ask WDA for the element fields in each find's answer")
+	}
+	// A real iPhone (the client's default) keeps WDA's hardware-key clear: typed
+	// backspaces erase only what is left of the cursor.
+	if clearShortcut["sent"] != true {
+		t.Errorf("CreateSession on a real device should send useClearTextShortcut true, sent %v", clearShortcut["sent"])
+	}
+
+	// A simulator's driver clears with typed backspaces: the hardware key parks
+	// the software keyboard there.
+	delete(clearShortcut, "sent")
+	NewDriver(client, &core.PlatformInfo{IsSimulator: true}, "SIM")
+	if err := client.CreateSession("com.example.app", ""); err != nil {
+		t.Fatalf("CreateSession failed: %v", err)
+	}
+	if clearShortcut["sent"] != false {
+		t.Errorf("CreateSession on a simulator should send useClearTextShortcut false, sent %v", clearShortcut["sent"])
 	}
 }
 

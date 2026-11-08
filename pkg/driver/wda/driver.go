@@ -108,6 +108,9 @@ const (
 
 // NewDriver creates a new WDA driver.
 func NewDriver(client *Client, info *core.PlatformInfo, udid string) *Driver {
+	if client != nil {
+		client.typedClear = info != nil && info.IsSimulator
+	}
 	return &Driver{
 		client: client,
 		info:   info,

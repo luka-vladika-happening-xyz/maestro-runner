@@ -35,6 +35,11 @@ type Client struct {
 	sourceOKAt   time.Time
 	sourceErr    error
 	sourceErrsAt time.Time
+
+	// typedClear: clear a field with typed backspaces instead of WebDriverAgent's
+	// hardware-keyboard Clear key (useClearTextShortcut false). On for a
+	// simulator only; NewDriver sets it from the device.
+	typedClear bool
 }
 
 // SourceUnreadableSince returns the last page-source error when no read
@@ -174,10 +179,23 @@ func (c *Client) CreateSession(bundleID string, alertAction string) error {
 	// rect and visibility, which getElementInfo would otherwise read with
 	// four more requests (#258). WebDriverAgent ignores a setting it does not
 	// know, and keeps all of them process-wide, not per session.
+	//
+	// useClearTextShortcut: WebDriverAgent's first try at clearing a field is
+	// a hardware keyboard's Clear key (an IOHIDEvent). On a simulator iOS then
+	// takes a hardware keyboard as attached and keeps the software keyboard
+	// parked below the screen whenever a field has focus, so what an app shows
+	// with the keyboard (a betslip's stake chips) never appears; there the
+	// field is cleared with typed backspaces, as Maestro erases. A real
+	// iPhone keeps its keyboard up after the Clear key, and typed backspaces
+	// erase only what is left of the cursor: a tap in the middle of a
+	// one-digit field put the cursor before the digit about half the time,
+	// and nothing was erased. Sent either way, since WebDriverAgent keeps it
+	// process-wide.
 	_ = c.UpdateSettings(map[string]interface{}{
 		"snapshotMaxDepth":          wdaSnapshotMaxDepth(),
 		"shouldUseCompactResponses": false,
 		"elementResponseAttributes": elementResponseAttributes,
+		"useClearTextShortcut":      !c.typedClear,
 	})
 
 	return nil
