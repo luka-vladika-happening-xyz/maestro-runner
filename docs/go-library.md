@@ -91,6 +91,7 @@ For Appium, set `AppiumURL` and either `CapsFile` or a parsed `Capabilities` map
 | `IncludeTags`, `ExcludeTags` | filter which flows in a suite run |
 | `WaitForIdleTimeout`, `StepDelay`, `TypingFrequency` | timing knobs |
 | `StartSimulator`, `StartEmulator`, `AutoStartEmulator`, `ShutdownAfter` | boot a device for the run and tear it down after |
+| `ExpandSuites` | run each `runFlow` of a suite file (a flow made only of `runFlow` steps of files) as a flow of its own, as `test --expand-suites` does. Off by default: such a file is one flow, as in Maestro |
 
 Set `OutputDir` per flow (as in the example) if you want one report directory per flow; set it once if you want them to share a directory.
 
@@ -146,7 +147,7 @@ runner := executor.New(driver, executor.RunnerConfig{
 result, err := runner.Run(context.Background(), []flow.Flow{*f})
 ```
 
-`RunnerConfig` exposes `OnFlowStart`, `OnStepComplete`, `OnNestedStep`, and `OnFlowEnd` callbacks, which is how you stream live progress into your own UI or logs instead of the terminal.
+`RunnerConfig` exposes `OnFlowStart`, `OnStepComplete`, `OnNestedStep`, and `OnFlowEnd` callbacks, which is how you stream live progress into your own UI or logs instead of the terminal. Its `ExpandSuites` splits a suite file into a flow per `runFlow`, as `RunConfig.ExpandSuites` does; without it a suite file is one flow.
 
 ## Version locking
 

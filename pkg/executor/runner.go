@@ -77,6 +77,13 @@ type RunnerConfig struct {
 	// For pacing demos and apps whose animations outrun the assertions.
 	StepDelay int
 
+	// ExpandSuites runs each runFlow of a suite file (a flow made only of
+	// unconditional runFlow steps of files, see flow.IsSuite) as a flow of its
+	// own (--expand-suites). Off, such a file is one flow, its runFlows nested
+	// in it, as Maestro runs it: a failure ends it, and what one sub-flow puts
+	// in `output` the next one reads.
+	ExpandSuites bool
+
 	// Pauser, when set, is asked what to do when a step fails the flow, with
 	// the device left as the failure left it (--pause-on-failure, #246). Nil
 	// (the default) never pauses. Sequential runs only: ParallelRunner
@@ -141,8 +148,10 @@ func New(driver core.Driver, cfg RunnerConfig) *Runner {
 
 // Run executes all flows and generates reports.
 func (r *Runner) Run(ctx context.Context, flows []flow.Flow) (*RunResult, error) {
-	// Expand suites into individual test case flows
-	expandedFlows := expandSuites(flows)
+	expandedFlows := flows
+	if r.config.ExpandSuites {
+		expandedFlows = expandSuites(flows)
+	}
 
 	// Build report skeleton
 	builderCfg := report.BuilderConfig{
@@ -352,7 +361,8 @@ func (r *Runner) buildRunResult(flowResults []FlowResult) *RunResult {
 	return result
 }
 
-// expandSuites expands suite files into individual test case flows.
+// expandSuites expands suite files into individual test case flows, with
+// --expand-suites (RunnerConfig.ExpandSuites).
 // A suite is a flow that only contains runFlow steps - each runFlow becomes a separate flow.
 // Non-suite flows pass through unchanged.
 func expandSuites(flows []flow.Flow) []flow.Flow {

@@ -119,6 +119,10 @@ MAESTRO_RUNNER_NO_UPDATE_CHECK=1 to skip the check; on CI the notice is not prin
 			Usage: "Run flows that fail again, up to N more times, in the same run (the device agent stays up; the report keeps every attempt)",
 		},
 		&cli.BoolFlag{
+			Name:  "expand-suites",
+			Usage: "Run each runFlow of a suite file (a flow made only of runFlow steps of files) as a flow of its own; without it the file is one flow, as in Maestro",
+		},
+		&cli.BoolFlag{
 			Name:  "retry-failed",
 			Usage: "Run only the flows that failed in the previous run (looks for the last report under the same --output directory)",
 		},
@@ -575,6 +579,9 @@ type RunConfig struct {
 	ReportFile  string
 	RetryFailed bool // Narrow the selection to flows that failed in the previous run
 	Retries     int  // Run failing flows again, up to this many more times, in the same run
+	// ExpandSuites runs each runFlow of a suite file as a flow of its own
+	// (--expand-suites); see executor.RunnerConfig.ExpandSuites.
+	ExpandSuites bool
 	// PauseOnFailure pauses a sequential run at a step that fails its flow
 	// and takes commands from the terminal (--pause-on-failure, #246).
 	// Already resolved: false whenever no one could answer the pause.
@@ -869,6 +876,7 @@ func runTest(c *cli.Context) error {
 		RetryFailed:        getBool("retry-failed"),
 		PauseOnFailure:     getBool("pause-on-failure"),
 		Retries:            getInt("retries"),
+		ExpandSuites:       getBool("expand-suites"),
 		ShareHierarchy:     true,
 		Parallel:           parallel,
 		Continuous:         getBool("continuous"),
@@ -1818,6 +1826,7 @@ func executeSingleDevice(cfg *RunConfig, flows []flow.Flow) (*executor.RunResult
 		DisableAnimations:  cfg.DisableAnimations,
 		Insecure:           cfg.Insecure,
 		StepDelay:          cfg.StepDelay,
+		ExpandSuites:       cfg.ExpandSuites,
 		TypingFrequency:    cfg.TypingFrequency,
 		DeviceInfo:         &deviceInfo,
 		OnFlowStart:        onFlowStartWithCloud(cfg),
@@ -1874,6 +1883,7 @@ func ExecuteFlowWithDriver(driver core.Driver, cfg *RunConfig, f flow.Flow) (*ex
 		DisableAnimations:  cfg.DisableAnimations,
 		Insecure:           cfg.Insecure,
 		StepDelay:          cfg.StepDelay,
+		ExpandSuites:       cfg.ExpandSuites,
 		TypingFrequency:    cfg.TypingFrequency,
 		DeviceInfo:         &deviceInfo,
 		OnFlowStart:        onFlowStartWithCloud(cfg),
@@ -2257,6 +2267,7 @@ func executeAppiumSingleSession(cfg *RunConfig, flows []flow.Flow) (*executor.Ru
 		DisableAnimations:  cfg.DisableAnimations,
 		Insecure:           cfg.Insecure,
 		StepDelay:          cfg.StepDelay,
+		ExpandSuites:       cfg.ExpandSuites,
 		TypingFrequency:    cfg.TypingFrequency,
 		DeviceInfo:         &deviceInfo,
 		OnFlowStart:        onFlowStartWithCloud(cfg),
@@ -3155,6 +3166,7 @@ func createParallelRunner(cfg *RunConfig, workers []executor.DeviceWorker, platf
 		DisableAnimations:  cfg.DisableAnimations,
 		Insecure:           cfg.Insecure,
 		StepDelay:          cfg.StepDelay,
+		ExpandSuites:       cfg.ExpandSuites,
 		TypingFrequency:    cfg.TypingFrequency,
 		// Callbacks will be set per-worker in parallel.go with device info
 	}

@@ -9,7 +9,8 @@ type Flow struct {
 }
 
 // IsSuite returns true if this flow is a suite file (only contains runFlow steps with file references).
-// Suite files orchestrate multiple test cases; each runFlow represents a test case.
+// Suite files orchestrate multiple test cases; each runFlow represents a test case when the run asks
+// for that (--expand-suites). Otherwise a suite file runs as one flow, as in Maestro.
 // Requires at least 2 runFlow steps with file references to be considered a suite.
 // A single runFlow is just a wrapper, not a suite.
 // A runFlow with inline commands, a `when` condition or an else branch is part of the flow itself, not a
