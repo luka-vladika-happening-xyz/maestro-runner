@@ -560,6 +560,19 @@ func sortByDistanceXReverse(elements []*ParsedElement, refX int) {
 	}
 }
 
+// anchorMatches returns the elements a relative selector's anchor matches:
+// its own criteria, then its containsDescendants, as Maestro filters the
+// anchor before the anchor's index counts what is left. `childOf: {id: card,
+// containsDescendants: [...], index: 0}` is the first card that holds the
+// descendants, not the first card.
+func anchorMatches(elements []*ParsedElement, anchor flow.Selector) []*ParsedElement {
+	matches := FilterBySelector(elements, anchor)
+	if len(anchor.ContainsDescendants) > 0 {
+		matches = FilterContainsDescendants(matches, elements, anchor.ContainsDescendants)
+	}
+	return matches
+}
+
 // FilterContainsDescendants returns elements that contain ALL specified descendants.
 // Each descendant selector must match at least one child within the element's bounds.
 func FilterContainsDescendants(elements []*ParsedElement, allElements []*ParsedElement, descendants []*flow.Selector) []*ParsedElement {

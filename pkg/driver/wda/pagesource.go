@@ -700,6 +700,19 @@ func isInside(inner, outer core.Bounds) bool {
 		inner.Y+inner.Height <= outer.Y+outer.Height
 }
 
+// anchorMatches returns the elements a relative selector's anchor matches:
+// its own criteria, then its containsDescendants, as Maestro filters the
+// anchor before the anchor's index counts what is left. `childOf: {id: card,
+// containsDescendants: [...], index: 0}` is the first card that holds the
+// descendants, not the first card.
+func anchorMatches(elements []*ParsedElement, anchor flow.Selector) []*ParsedElement {
+	matches := FilterBySelector(elements, anchor)
+	if len(anchor.ContainsDescendants) > 0 {
+		matches = FilterContainsDescendants(matches, elements, anchor.ContainsDescendants)
+	}
+	return matches
+}
+
 // FilterContainsDescendants returns elements that contain ALL specified descendants.
 func FilterContainsDescendants(elements []*ParsedElement, allElements []*ParsedElement, descendants []*flow.Selector) []*ParsedElement {
 	var result []*ParsedElement
